@@ -22,6 +22,12 @@ export class ProductService {
     this.initProductsTotalNumber();
   }
 
+  resetList() {
+    this.productsSubject.next([]);
+    this.initProducts();
+    this.initProductsTotalNumber();
+  }
+
   private initProductsTotalNumber() {
     this.productsTotalNumber$ = this.http.get<number>(this.baseUrl + "count").pipe(shareReplay());
   }
