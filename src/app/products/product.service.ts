@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { catchError, delay, first, map, mergeAll, shareReplay, tap } from 'rxjs/operators';
 import { Product } from './product.interface';
 
@@ -10,12 +10,20 @@ import { Product } from './product.interface';
 export class ProductService {
 
   private baseUrl = 'https://storerestservice.azurewebsites.net/api/products/';
-  products$: Observable<Product[]>;
+  private productsSubject = new BehaviorSubject<Product[]>([]);
+  products$: Observable<Product[]> = this.productsSubject.asObservable();
+  productsTotalNumber$: Observable<number>;
   mostExpensiveProduct$: Observable<Product>;
+  productsToLoad = 10;
 
   constructor(private http: HttpClient) {
     this.initProducts();
     this.initMostExpensiveProduct();
+    this.initProductsTotalNumber();
+  }
+
+  private initProductsTotalNumber() {
+    this.productsTotalNumber$ = this.http.get<number>(this.baseUrl + "count");
   }
 
   private initMostExpensiveProduct() {
@@ -23,7 +31,7 @@ export class ProductService {
       this
       .products$
       .pipe(
-        map(products => [...products].sort((p1, p2) => p1.price > p2.price ? -1 : 1)),
+        map(products => products.sort((p1, p2) => p1.price > p2.price ? -1 : 1)),
         // [{}, {}, {}]
         mergeAll(),
         // {}, {}, {}
@@ -31,17 +39,26 @@ export class ProductService {
       )
   }
 
-  initProducts() {
-    let url:string = this.baseUrl + `?$orderby=ModifiedDate%20desc`;
+  initProducts(skip: number = 0, take: number = this.productsToLoad) {
+    let url = this.baseUrl + `?$skip=${skip}&$top=${take}&$orderby=ModifiedDate%20desc`;
 
-    this.products$ = this
-                      .http
-                      .get<Product[]>(url)
-                      .pipe(
-                        delay(1500),
-                        tap(console.table),
-                        shareReplay()
-                      );
+    this
+      .http
+      .get<Product[]>(url)
+      .pipe(
+        delay(1500),
+        tap(console.table),
+        shareReplay(),
+        map(
+          newProducts => {
+            let currentProducts = this.productsSubject.value;
+            return currentProducts.concat(newProducts);
+          }
+        )
+      )
+      .subscribe(
+        concatenatedProducts => this.productsSubject.next(concatenatedProducts)
+      );
   }
 
   insertProduct(newProduct: Product): Observable<Product> {

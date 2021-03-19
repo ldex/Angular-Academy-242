@@ -51,12 +51,12 @@ export class ProductInsertComponent implements OnInit {
 
     this.insertForm = this.fb.group(
       {
-        'name': this.name,
-        'price': this.price,
-        'description': this.description,
-        'imageUrl': this.imageUrl,
-        'discontinued': false,
-        'fixedPrice': false
+        name: this.name,
+        price: this.price,
+        description: this.description,
+        imageUrl: this.imageUrl,
+        discontinued: false,
+        fixedPrice: false
       }
     );
   }
